@@ -90,21 +90,7 @@ class InferenceModel01:
         self.mse = tf.multiply(tf.reduce_mean(tf.square(self.reg_fc - self.locals)), 1.0)
         self.predict = tf.multiply(self.reg_fc, image_height)
 
-        #if trainable:
-        #    self.global_step = tf.Variable(0, trainable=False, name='global_step')
-        #    self.global_epoch = tf.Variable(0, trainable=False, name='global_epoch')
-
-        #    with tf.name_scope('loss'):
-        #        r2_loss = 0.001 * tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name])
-        #    learning_rate = tf.train.exponential_decay(learning_rate=0.01,
-        #                                               global_step=tf.train.get_global_step(),
-        #                                               decay_steps=5000, decay_rate=0.94, staircase=True)
-
-        #    with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-        #        optimizer = tf.train.RMSPropOptimizer(learning_rate=learning_rate, decay=0.9, epsilon=0.1)
-        #        self.train = optimizer.minimize(self.mse + r2_loss, global_step=tf.train.get_global_step())
-
-
+        
 def optimize(ce_loss, reg_loss, learning_rate=0.01, decay_steps=5000, decay_rate=0.94, decay=0.9, epsilon=0.1):
     # regularization loss
     with tf.name_scope('reg_loss'):
@@ -137,7 +123,6 @@ class InferenceModel02:
 
         features_2d = self.images
         with tf.variable_scope(self.model_scope):
-
             for in_channels, out_channels in zip([64,96,128,160,192], [128,160,192,224,256]):
                 features_2d = se_res_block(inputs=features_2d,
                                            in_channels=in_channels, out_channels=out_channels,
@@ -161,7 +146,6 @@ class InferenceModel02:
 
         is_correct = tf.equal(tf.argmax(self.logits, axis=1), self.labels)
         self.accuracy = tf.reduce_mean(tf.cast(is_correct, tf.float32))
-        #self.accuracy = calculate_accuracy(self.prob, tf.cast(self.labels, dtype=tf.float32))
         print('prob: ', self.prob)
         self.loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.labels,
                                                                                   logits=self.logits))
@@ -174,16 +158,6 @@ class InferenceModel02:
         if trainable:
             self.global_step = tf.Variable(0, trainable=False, name='global_step')
             self.global_epoch = tf.Variable(0, trainable=False, name='global_epoch')
-
-            #with tf.name_scope('loss'):
-            #    r2_loss = 0.001 * tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name])
-            #learning_rate = tf.train.exponential_decay(learning_rate=0.01,
-            #                                           global_step=tf.train.get_global_step(),
-            #                                           decay_steps=5000, decay_rate=0.94, staircase=True)
-
-            #with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-            #    optimizer = tf.train.RMSPropOptimizer(learning_rate=learning_rate, decay=0.9, epsilon=0.1)
-            #    self.train = optimizer.minimize(self.loss + r2_loss, global_step=tf.train.get_global_step())
 
 
 if __name__ == '__main__':
