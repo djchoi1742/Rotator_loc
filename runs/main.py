@@ -228,12 +228,6 @@ def validation():
     weight_auc_csv = weight_auc_csv.sort_values('AUC', ascending=False)
     all_ckpt_paths = list(weight_auc_csv['WEIGHT_PATH'][0:int(config.num_weight)])
 
-
-    #ckpt = tf.train.get_checkpoint_state(log_path)
-    #if not ckpt:
-    #    raise ValueError('No checkpoint found in ' + log_path)
-    #all_ckpt_paths = ckpt.all_model_checkpoint_paths[0:1]
-
     num_ckpt = len(all_ckpt_paths)
     print('num_ckpt: ', num_ckpt)
 
@@ -338,22 +332,7 @@ def validation():
     prs.save(ppt_name)
     print('Saved: ', ppt_name)
 
-
-
-
-    #    plt.figure(figsize=(10 * 2, 6 * 2))
-    #    num_figs = imgs.shape[0]
-    #    for j in range(num_figs):
-    #        plt.subplot(8, 5, j + 1)
-    #        plt.imshow(np.squeeze(imgs[j]), cmap='gray')
-    #        plt.axis('off')
-    #        plt.title(str(names[j].decode('utf-8')), fontsize=8, color='blue')
-    #    fig_name = '_'.join([config.exp_name, config.npy_name, '%03d' % step]) + '.png'
-    #    fig_path = os.path.join(ppt_path, fig_name)
-    #    plt.savefig(fig_path, bbox_inches='tight')
-
-
-
+    
 def show_cam(cams, probs, images, labels, names, side_label, num_rows=5, num_cols=8, figsize=(8*2, 5*2)):
     batch_size = cams.shape[0]
     fig, ax = plt.subplots(num_rows, num_cols, figsize=figsize)
