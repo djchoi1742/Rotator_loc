@@ -1,9 +1,6 @@
 import argparse
 
-license = """
-Copyright ⓒ Dongjun Choi, Kyong Joon Lee
-Department of Radiology at Seoul National University Bundang Hospital. \n
-If you have any question, please email us for assistance: dongyul.oh@snu.ac.kr \n """
+license = "Rotator_loc"
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, \
                                  description='', epilog=license, add_help=False)
 
