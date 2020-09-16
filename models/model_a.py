@@ -61,7 +61,6 @@ class InferenceModel01:
         self.local_num = 2
         self.images = tf.placeholder(tf.float32, shape=[None, self.img_h, self.img_w, self.img_c],
                                      name='Raw_image')
-        #self.labels = tf.placeholder(tf.int64, shape=[None], name='Raw_label')  # sparse index
         self.locals = tf.placeholder(tf.float32, shape=[None, self.local_num], name='Localization')
         self.is_training = tf.placeholder(tf.bool, shape=None, name='Localize_train')
 
