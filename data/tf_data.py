@@ -9,11 +9,15 @@ import re
 import warnings
 import argparse
 import functools
+import matplotlib.pyplot as plt
+import pptx
+from pptx.util import Inches
 
 warnings.filterwarnings('ignore')
 
-DATA_PATH = '/workspace/Rotator/ro_loc/'
-RAW_PATH = '/workspace/Rotator/RAW/'
+DATA_PATH = '/data/SNUBH/Rotator/ro_loc/'
+RAW_PATH = '/data/SNUBH/Rotator/RAW/'
+EXP_PATH = '/data/SNUBH/Rotator/ro_loc/'
 
 IMAGE_SIZE1 = [256, 256]  # exp101: [512, 512]
 IMAGE_SIZE2 = [512, 512]  # exp101: [256, 256]
@@ -23,13 +27,12 @@ prop_h, prop_w = 0.5, 0.5
 
 parser = argparse.ArgumentParser()
 setup_config = parser.add_argument_group('data setting')
-setup_config.add_argument('--exp_name', type=str, dest='exp_name', default='exp102', help='experiment name')
-setup_config.add_argument('--npy_name', type=str, dest='npy_name', default='trval', help='npy name')
+setup_config.add_argument('--exp_name', type=str, dest='exp_name', default='exp104', help='experiment name')
+setup_config.add_argument('--data_name', type=str, dest='data_name', default='trval', help='data name')
 setup_config.add_argument('--batch_size', type=int, dest='batch_size', default=60, help='batch_size')
-setup_config.add_argument('--train_csv', type=str, dest='train_csv',
-                          default=DATA_PATH + 'xlsx/exp308_train.xlsx')
-setup_config.add_argument('--val_csv', type=str, dest='val_csv',
-                          default=DATA_PATH + 'xlsx/exp308_val.xlsx')
+setup_config.add_argument('--train_csv', type=str, dest='train_csv', default=DATA_PATH + 'xlsx/exp308_train.xlsx')
+setup_config.add_argument('--val_csv', type=str, dest='val_csv', default=DATA_PATH + 'xlsx/exp308_val.xlsx')
+setup_config.add_argument('--view_type', type=int, dest='view_type', default=1)
 config, unparsed = parser.parse_known_args()
 
 
@@ -120,7 +123,7 @@ def data_setting(npy_name):
 
 
 class DataSetting:
-    def __init__(self, data_dir, only_val, batch_size, **kwargs):
+    def __init__(self, data_dir, only_val, batch_size, pos_aug=False, **kwargs):
         if not os.path.exists(data_dir):
             data_root = os.path.dirname(data_dir)
             if not os.path.exists(data_root):
@@ -170,29 +173,33 @@ class DataSetting:
                                        batch_size=batch_size, shuffle=False)
 
             if only_val is False:
+
                 train_x1, train_y1 = pre_built['train_x1'], pre_built['train_y1']
                 train_x3, train_y3 = pre_built['train_x3'], pre_built['train_y3']
                 train_x4, train_y4 = pre_built['train_x4'], pre_built['train_y4']
                 train_id = pre_built['train_id']
                 self.data_length = len(train_id) + len(val_id)
 
-                index = np.asarray([v[-1] for v in train_y1])
+                if pos_aug:
 
-                train_x1 = np.concatenate([train_x1, train_x1[index == 1]], axis=0)
-                train_x3 = np.concatenate([train_x3, train_x3[index == 1]], axis=0)
-                train_x4 = np.concatenate([train_x4, train_x4[index == 1]], axis=0)
-                train_y1 = np.concatenate([train_y1, train_y1[index == 1]], axis=0)
-                train_y3 = np.concatenate([train_y3, train_y3[index == 1]], axis=0)
-                train_y4 = np.concatenate([train_y4, train_y4[index == 1]], axis=0)
-                train_id = np.concatenate([train_id, train_id[index == 1]], axis=0)
+                    index = np.asarray([v[-1] for v in train_y1])
 
-                np.random.seed(20190816)
+                    train_x1 = np.concatenate([train_x1, train_x1[index == 1]], axis=0)
+                    train_x3 = np.concatenate([train_x3, train_x3[index == 1]], axis=0)
+                    train_x4 = np.concatenate([train_x4, train_x4[index == 1]], axis=0)
+                    train_y1 = np.concatenate([train_y1, train_y1[index == 1]], axis=0)
+                    train_y3 = np.concatenate([train_y3, train_y3[index == 1]], axis=0)
+                    train_y4 = np.concatenate([train_y4, train_y4[index == 1]], axis=0)
+                    train_id = np.concatenate([train_id, train_id[index == 1]], axis=0)
+
+                np.random.seed(20201030)
                 p = np.random.permutation(len(train_x1))
                 train_x1, train_y1 = train_x1[p], train_y1[p]
                 train_x3, train_y3 = train_x3[p], train_y3[p]
                 train_x4, train_y4 = train_x4[p], train_y4[p]
                 train_id = train_id[p]
- 
+                print(len(train_id))
+
                 self.train = self.RegSetting((train_x1, train_y1, train_x3, train_y3, train_x4, train_y4, train_id),
                                               batch_size=batch_size, shuffle=True)
 
@@ -203,8 +210,6 @@ class DataSetting:
 
             self.neg_length = len([v[-1] for v in self.label1 if v[-1] == 0])
             self.pos_length = self.data_length - self.neg_length
-
-            import pdb; pdb.set_trace()
 
             data_set = tf.data.Dataset.from_tensor_slices(tensors=
                                                          (self.file1, [v for v in self.label1],
@@ -233,16 +238,15 @@ class DataSetting:
                         range_h1, range_h2 = center_y - int(w/2), center_y + int(w/2)
                         crop_img = img[range_h1:range_h2,:]
                         x_c, y_c = x, y - round(h/2) + round(w/2)
-                        #img_type = 1
+
                     elif w > h:
                         range_w1, range_w2 = center_x - int(h/2), center_x + int(h/2)
                         crop_img = img[:,range_w1:range_w2]
                         x_c, y_c = x - round(w/2) + round(h/2), y
-                        #img_type = 2
+
                     else:
                         crop_img = img
                         x_c, y_c = x, y
-                        #img_type = 0
 
                     resize_img = np.expand_dims(skimage.transform.resize(crop_img, IMAGE_SIZE1,
                                                                          preserve_range=True), axis=-1)
@@ -259,15 +263,20 @@ class DataSetting:
                     return resize_img, np.array([x_rp, y_rp]), file.decode(), np.int64(label[-1])
 
                 name = id.decode()
-                img1, xy_rp, file, lbl = each_read(file1, label1)
 
-                return img1, xy_rp, file, lbl, name
+                img1, xy_rp1, file1, lbl = each_read(file1, label1)
+                img2, xy_rp2, file2, _ = each_read(file2, label2)
+                img3, xy_rp3, file3, _ = each_read(file3, label3)
 
-            data_set = data_set.map(num_parallel_calls=8,
+                return img1, xy_rp1, file1, img2, xy_rp2, file2, img3, xy_rp3, file3, lbl, name
+
+            data_set = data_set.map(num_parallel_calls=2,
                                     map_func=lambda file1, label1, file2, label2, file3, label3, id:
                                     tuple(tf.py_func(func=dcm_read_by_ftn,
                                                      inp=[file1, label1, file2, label2, file3, label3, id],
                                                      Tout=[tf.float32, tf.float32, tf.string,
+                                                           tf.float32, tf.float32, tf.string,
+                                                           tf.float32, tf.float32, tf.string,
                                                            tf.int64, tf.string]
                                                      )))
             if num_epochs == 0:
@@ -288,6 +297,40 @@ def calculate_crop_coord(center_x, center_y, spacing_x, spacing_y, radius):
     return [x1, y1, x2, y2]
 
 
+def local_process(value):
+    if value < 0:
+        local_value = 0.0
+    elif value > IMAGE_SIZE1[0]:
+        local_value = float(IMAGE_SIZE1[0])
+    else:
+        local_value = value
+    return float(local_value)
+
+
+class LocalizeResult:
+    def __init__(self, files, locals):
+        files = files.astype(str)
+        self.loc = list(map(self.loc_result, files.tolist(), locals.tolist()))
+
+    def loc_result(self, file, local):
+        read_file = dcm.read_file(file)
+        image = read_file.pixel_array
+        h, w = image.shape
+
+        x_r, y_r = local_process(local[0]), local_process(local[1])
+
+        if h > w:
+            x_c, y_c = (w/IMAGE_SIZE1[1])*x_r, (w/IMAGE_SIZE1[1])*y_r
+            x, y = round(x_c), round(y_c + h/2 - w/2)
+        elif w > h:
+            x_c, y_c = (h/IMAGE_SIZE1[0])*x_r, (h/IMAGE_SIZE1[1])*y_r
+            x, y = round(x_c + w/2 - h/2), round(y_c)
+        else:
+            x, y = (w/IMAGE_SIZE1[1])*x_r, (w/IMAGE_SIZE1[1])*y_r
+
+        return [x, y]
+
+
 class ImageProcess:
     def __init__(self, files, locals, augmentation):
         files = files.astype(str)
@@ -302,15 +345,6 @@ class ImageProcess:
             spacing_x, spacing_y = read_file.PixelSpacing[1], read_file.PixelSpacing[0]
         image = read_file.pixel_array
         h, w = image.shape
-
-        def local_process(value):
-            if value < 0:
-                local_value = 0.0
-            elif value > IMAGE_SIZE1[0]:
-                local_value = float(IMAGE_SIZE1[0])
-            else:
-                local_value = value
-            return float(local_value)
 
         x_r, y_r = local_process(local[0]), local_process(local[1])
 
@@ -344,9 +378,82 @@ class ImageProcess:
         return crop_img
 
 
+def select_view(images1, xy_rp1, files1, images2, xy_rp2, files2, images3, xy_rp3, files3):
+    if config.view_type == 1:
+        images, xy_rp, files = images1, xy_rp1, files1
+    elif config.view_type == 3:
+        images, xy_rp, files = images2, xy_rp2, files2
+    elif config.view_type == 4:
+        images, xy_rp, files = images3, xy_rp3, files3
+    else:
+        raise ValueError('Error! Invalid view type.')
+    return images, xy_rp, files
+
+
+def test_data_loader(data_set):
+    check_path = os.path.join(EXP_PATH, config.exp_name, 'view')
+    if not os.path.exists(check_path):
+        os.makedirs(check_path)
+
+    with tf.Session() as sess:
+        sess.run(data_set.val.init_op)
+        num_examples, next_batch = data_set.val.data_length, data_set.val.next_batch
+
+        count = 0
+        num_iter = int(np.ceil(float(num_examples) / config.batch_size))
+        print('num_iter: ', num_iter)
+
+        prs = pptx.Presentation()
+        prs.slide_width = Inches(10 * 2)
+        prs.slide_height = Inches(6 * 2)
+
+        while count < num_iter:
+            images1, xy_rp1, files1, images2, xy_rp2, files2, images3, xy_rp3, files3, \
+            labels, names = sess.run(data_set.val.next_batch)
+
+            images, xy_rp, files = \
+                select_view(images1, xy_rp1, files1, images2, xy_rp2, files2, images3, xy_rp3, files3)
+
+            blank_slide_layout = prs.slide_layouts[6]
+            slide = prs.slides.add_slide(blank_slide_layout)
+
+            show_images(images, names, num_rows=6, num_cols=10, fig_size=(10*2, 6*2))
+            fig_name = '_'.join([config.exp_name, config.data_name, '%03d' % count]) + '.png'
+
+            fig_path = os.path.join(check_path, fig_name)
+            plt.savefig(fig_path, bbox_inches='tight')
+
+            slide.shapes.add_picture(fig_path, Inches(0), Inches(0), width=Inches(10 * 2))
+            os.remove(fig_path)
+            count += 1
+
+            if count % 10 == 0:
+                print(count)
+
+    ppt_name = os.path.join(check_path, '_'.join([config.exp_name, config.data_name]) + '.pptx')
+    prs.save(ppt_name)
+    print('Saved: ', ppt_name)
+
+
+def show_images(images, names, num_rows=6, num_cols=10, fig_size=(10*2, 6*2)):
+    plt.figure(figsize=fig_size)
+    num_figs = images.shape[0]  # num_rows * num_cols
+    # num_chars = 5  # num of chars to show in names
+
+    for j in range(num_figs):
+        plt.subplot(num_rows, num_cols, j + 1)
+        plt.imshow(np.squeeze(images[j]), cmap='gray')
+        plt.axis('off')
+        img_name = os.path.basename(names[j])
+
+        plt_name = '_'.join([str(img_name.decode('utf-8'))])
+        plt.title(plt_name, fontsize=8, color='blue')
+
+
 if __name__ == '__main__':
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
     os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 
-    data_set = data_setting(npy_name=config.npy_name)
+    d_set = data_setting(npy_name=config.data_name)
+    test_data_loader(d_set)
 
