@@ -2,5 +2,6 @@
 - Localization and classification models by using deep learning algorithm for rotator cuff tear in shoulder radiography
 
 ## 1. Network Architecture
-![process](https://user-images.githubusercontent.com/49828672/102781234-ab409500-43da-11eb-9734-cff6a17672d1.png)
+![pp2](https://user-images.githubusercontent.com/49828672/102977849-ecee4e80-4546-11eb-9670-92ad8af19fd9.png)
+
 
